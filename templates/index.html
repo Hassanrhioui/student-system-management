@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Student Course Manager</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .course-card {
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container mt-5">
+        <h1 class="mb-4">Student Course Manager</h1>
+        
+        <!-- Add Course Form -->
+        <div class="card mb-4">
+            <div class="card-body">
+                <h5 class="card-title">Add New Course</h5>
+                <form id="courseForm">
+                    <div class="mb-3">
+                        <label for="courseCode" class="form-label">Course Code</label>
+                        <input type="text" class="form-control" id="courseCode" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="courseName" class="form-label">Course Name</label>
+                        <input type="text" class="form-control" id="courseName" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="instructor" class="form-label">Instructor</label>
+                        <input type="text" class="form-control" id="instructor" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="credits" class="form-label">Credits</label>
+                        <input type="number" class="form-control" id="credits" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Add Course</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Courses List -->
+        <div id="coursesList" class="row">
+            <!-- Courses will be dynamically added here -->
+        </div>
+    </div>
+
+    <!-- Edit Modal -->
+    <div class="modal fade" id="editModal" tabindex="-1" aria-labelledby="editModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="editModalLabel">Edit Course</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="editForm">
+                        <input type="hidden" id="editCourseId">
+                        <div class="mb-3">
+                            <label for="editCourseCode" class="form-label">Course Code</label>
+                            <input type="text" class="form-control" id="editCourseCode" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="editCourseName" class="form-label">Course Name</label>
+                            <input type="text" class="form-control" id="editCourseName" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="editInstructor" class="form-label">Instructor</label>
+                            <input type="text" class="form-control" id="editInstructor" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="editCredits" class="form-label">Credits</label>
+                            <input type="number" class="form-control" id="editCredits" required>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    <button type="button" class="btn btn-primary" onclick="updateCourse()">Save changes</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Include Bootstrap JS -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
+    <script>
+        let editModal;
+
+        document.addEventListener('DOMContentLoaded', function() {
+            editModal = new bootstrap.Modal(document.getElementById('editModal'));
+        });
+
+        // Fetch and display courses
+        async function fetchCourses() {
+            const response = await fetch('/api/courses');
+            const courses = await response.json();
+            const coursesList = document.getElementById('coursesList');
+            coursesList.innerHTML = '';
+
+            courses.forEach(course => {
+                const courseElement = `
+                    <div class="col-md-6 course-card">
+                        <div class="card">
+                            <div class="card-body">
+                                <h5 class="card-title">${course.course_code}: ${course.course_name}</h5>
+                                <p class="card-text">
+                                    Instructor: ${course.instructor}<br>
+                                    Credits: ${course.credits}
+                                </p>
+                                <button class="btn btn-warning btn-sm" onclick="editCourse(${course.id})">Edit</button>
+                                <button class="btn btn-danger btn-sm" onclick="deleteCourse(${course.id})">Delete</button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                coursesList.innerHTML += courseElement;
+            });
+        }
+
+        // Add new course
+        document.getElementById('courseForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const courseData = {
+                course_code: document.getElementById('courseCode').value,
+                course_name: document.getElementById('courseName').value,
+                instructor: document.getElementById('instructor').value,
+                credits: parseInt(document.getElementById('credits').value)
+            };
+
+            await fetch('/api/courses', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(courseData)
+            });
+
+            // Reset form and refresh courses list
+            e.target.reset();
+            await fetchCourses();
+        });
+
+        // Edit course
+        async function editCourse(id) {
+            const response = await fetch(`/api/courses/${id}`);
+            const course = await response.json();
+            
+            // Populate edit form
+            document.getElementById('editCourseId').value = id;
+            document.getElementById('editCourseCode').value = course.course_code;
+            document.getElementById('editCourseName').value = course.course_name;
+            document.getElementById('editInstructor').value = course.instructor;
+            document.getElementById('editCredits').value = course.credits;
+            
+            // Show modal
+            editModal.show();
+        }
+
+        // Update course
+        async function updateCourse() {
+            const id = document.getElementById('editCourseId').value;
+            const updatedData = {
+                course_code: document.getElementById('editCourseCode').value,
+                course_name: document.getElementById('editCourseName').value,
+                instructor: document.getElementById('editInstructor').value,
+                credits: parseInt(document.getElementById('editCredits').value)
+            };
+
+            await fetch(`/api/courses/${id}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(updatedData)
+            });
+
+            // Hide modal and refresh courses list
+            editModal.hide();
+            await fetchCourses();
+        }
+
+        // Delete course
+        async function deleteCourse(id) {
+            if (confirm('Are you sure you want to delete this course?')) {
+                await fetch(`/api/courses/${id}`, {
+                    method: 'DELETE'
+                });
+                await fetchCourses();
+            }
+        }
+
+        // Initial load
+        fetchCourses();
+    </script>
+</body>
+</html>
